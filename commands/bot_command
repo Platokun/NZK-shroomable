@@ -1,0 +1,43 @@
+async function fetchAndParseHolidays() {
+    const url = 'https://nationaltoday.com/today/';
+
+    try {
+        // Fetch the HTML content
+        const response = await fetch(url);
+        const html = await response.text();
+
+        // Split HTML into lines
+        const lines = html.split('\n');
+
+        // Filter lines containing 'holiday-title'
+        const holidayLines = lines.filter(line => line.includes('holiday-title'));
+
+        // Extract the content inside the tags
+        const regex = />\s*(.*?)\s*</;
+        const holidays = holidayLines.map(line => {
+            const match = regex.exec(line);
+            return match ? match[1] : null; // Return the captured group or null
+        }).filter(Boolean); // Remove null entries
+
+        // Remove entries that include 'Birthday'
+        for (let i = 0; i < holidays.length; i++) {
+            if (holidays[i].includes('Birthday')) {
+                holidays.splice(i, 1);
+                i--;
+            }
+        }
+        
+        return holidays;
+    } catch (error) {
+        console.error('Error fetching or parsing data:', error);
+        return [];
+    }
+}
+
+// Usage example
+fetchAndParseHolidays().then(holidays => {
+    //sort todays_holiday alphanumarically
+    holidays = holidays.sort();
+    console.log('Holidays:', holidays);
+});
+

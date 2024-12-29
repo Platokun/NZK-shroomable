@@ -26,4 +26,6 @@ replay_pid*
 # do not share
 secrets.json
 livemessages.json
-
+config.json
+node_modules/
+.vs
