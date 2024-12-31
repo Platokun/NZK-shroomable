@@ -38,7 +38,7 @@ function write_to_file(guildId, channelId, now) {
 
     jsonData.guilds[guildId] = {
         channel_id: channelId,
-        time: now,
+        time: 0,
         enabled: false // Default to disabled
     };
 
