@@ -48,13 +48,22 @@ function write_to_file(guildId, channelId, now) {
     } catch (err) {
         console.error("Error writing to JSON file:", err);
     }
-}
-
+}                   /** krutch, naruzkurai, pl8o */
+var allowed_user_ids = ["313800057541623809", "751907539444170875", "175658817210679296"]
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('setdailyholidaychannel')
         .setDescription('Sets the channel for automatic holiday announcements'),
     async execute(interaction) {
+        if (!allowed_user_ids.includes(interaction.user.id)) {
+            //if user is server owner, allow
+            if (interaction.guild.ownerId === interaction.user.id) {
+                //do nothing
+            } else {
+            await interaction.reply("You do not have permission to use this command.");
+            return;
+        }
+        }
         // Fetch guild and channel info
         const { guildId, channelId, now } = fetch_guild_and_channel(interaction);
 
