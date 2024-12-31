@@ -9,20 +9,15 @@ var url;
 var html;
 var lines;
 var regex;
-var not_true = true;
-var waiting = 0;
 var message;
 async function fetchAndParseHolidays() {
     url = 'https://nationaltoday.com/today/';
-    not_true = true;
     try {
         // Fetch the HTML content
         response = await fetch(url);
          html = await response.text();
-
         // Split HTML into lines
          lines = html.split('\n');
-
         // Filter lines containing 'holiday-title'
         holidayLines = lines.filter(line => line.includes('holiday-title'));
 
@@ -40,10 +35,8 @@ async function fetchAndParseHolidays() {
                 i--;
             }
         }
-        not_true = false;
         return holidays;
     } catch (error) {
-        not_true = false;
         console.error('Error fetching or parsing data:', error);
         return [];
     }
@@ -67,7 +60,7 @@ function number_to_th(number){
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('holiday')
-        .setDescription('replies with pong'),
+        .setDescription('replies with todays holidays'),
     async execute(interaction) {
 
         
@@ -76,27 +69,18 @@ module.exports = {
             //sort todays_holiday alphanumarically
             holidays = holidays.sort();
             console.log('Holidaysaaaa:', holidays);
-            while(not_true){
-                //sleep for a quarter of a second
-                waiting++;
-                console.log("waiting:", waiting);
-            }
             // get array length of holidays
             var length = holidays.length;
-            //get date
+            
             var today = new Date();
             var day = number_to_th(today.getDate());
-            
             var month = number_to_th(today.getMonth() + 1);
-
             var year = today.getFullYear();
-            //create message
-
+            
             message = `today is the ${month} month on the ${day} day of the year ${year} and todays holidays are:\n `;
             //then do for (iterations) "holiday[i] \n"
-            for (var i = 0; i < length; i++) {
-                message = message + holidays[i] + "\n";}
-                console.log(message);
+            for (var i = 0; i < length; i++) {message = message + holidays[i] + "\n";}
+            console.log(message);
             interaction.reply(message);
         });
         
