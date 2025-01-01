@@ -4,10 +4,60 @@ const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token, clientId } = require('./config.json');
-
+const autoHolidayDataPath = path.join(__dirname, './auto_holiday_data.json');
 const commands = [];
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
+function printAutoHolidayData() {
+    try {
+        const data = fs.readFileSync(autoHolidayDataPath, 'utf-8');
+        console.log('auto_holiday_data.json contents:', JSON.parse(data));
+    } catch (error) {
+        console.error('Error reading auto_holiday_data.json:', error);
+    }
+}
+
+async function logLastBotMessage(guildId, channelId) {
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return console.error(`Guild not found: ${guildId}`);
+
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel || !channel.isTextBased()) return console.error(`Channel not found or not text-based: ${channelId}`);
+
+        const messages = await channel.messages.fetch({ limit: 10 });
+        const lastBotMessage = messages.find(msg => msg.author.id === client.user.id);
+
+        if (!lastBotMessage) {
+            console.log(`No recent messages found from the bot in guild ${guildId}, channel ${channelId}.`);
+            return;
+        }
+
+        const timestamp = lastBotMessage.createdAt;
+        const date = `${timestamp.getFullYear().toString().slice(-2)}/${String(timestamp.getMonth() + 1).padStart(2, '0')}/${String(timestamp.getDate()).padStart(2, '0')}`;
+        const time = `${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
+        const server_name = guild.name;
+        console.log('\n-----------------------------------');
+        console.log(`Last bot message in guild, ${server_name} ${guildId}, channel ${channelId} at ${date}, ${time}:`);
+        console.log();
+        console.log(lastBotMessage.content);
+        console.log();
+    } catch (error) {
+        console.error(`Error fetching last bot message for guild ${guildId}, channel ${channelId}:`, error);
+    }
+}
+
+function logLastMessagesFromConfig() {
+    try {
+        const data = JSON.parse(fs.readFileSync(autoHolidayDataPath, 'utf-8'));
+        for (const guildId in data.guilds) {
+            const { channel_id: channelId } = data.guilds[guildId];
+            logLastBotMessage(guildId, channelId);
+        }
+    } catch (error) {
+        console.error('Error reading or processing auto_holiday_data.json:', error);
+    }
+}
 
 function loadCommands(dir) {
     // Load commands once globally
@@ -62,5 +112,6 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
-
+//1x/10sec
+setInterval(logLastMessagesFromConfig, 10000);
 client.login(token);

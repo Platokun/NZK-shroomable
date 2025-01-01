@@ -71,7 +71,8 @@ module.exports = {
         write_to_file(guildId, channelId, now);
 
         // Respond to the user
-        const message = `Guild ID: ${guildId}, Channel ID: ${channelId}, Time: ${new Date(now).toLocaleString()}`;
+        let allowed_user = interaction.user.id;
+        const message = `Allowed user ${allowed_user} ran a command that (re)sets the auto_holiday function to run in this guild's channel,  Guild ID: ${guildId}, Channel ID: ${channelId}, at UTC Time: ${new Date(now).toLocaleString()}`;
         await interaction.reply(message);
     },
 };
