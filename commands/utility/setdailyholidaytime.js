@@ -66,14 +66,18 @@ module.exports = {
             return;
         }
 
+        const now = new Date();
         const data = get_json();
         if (!data || !data.guilds[interaction.guildId]) {
             await interaction.reply("This server is not configured for auto holidays. Please use `/setdailyholidaychannel` first.");
             return;
         }
 
-        // Calculate the `next run` based on `when` (today or tomorrow)
-        const now = new Date();
+        // Calculate the user's offset relative to UTC
+        const utcOffset = -now.getTimezoneOffset() / 60; // Local time offset in hours
+        const userOffset = (utcOffset - hour)+1; // Offset based on user-provided time relative to UTC also off by 1 errors suck
+
+        // Calculate the `next run` based on `when`
         const nextRunDate = new Date(
             now.getFullYear(),
             now.getMonth(),
@@ -88,11 +92,17 @@ module.exports = {
         guildData["target time"] = { hour, minutes };
         guildData["next run"] = nextRunDate.getTime();
         guildData["last ran"] = 0; // Reset "last ran"
+        guildData["timezone"] = userOffset; // Store the timezone offset
 
         write_json(data);
 
         await interaction.reply(
-            `Daily holiday announcements' target time has been set to ${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} UTC, scheduled for ${when.toUpperCase()}.`
+            `Daily holiday announcements' target time has been set to ${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} UTC, scheduled for ${when.toUpperCase()}.\n` +
+            `Your timezone offset is UTC${userOffset >= 0 ? '+' : ''}${userOffset}.`+
+            `next run is ${nextRunDate.toLocaleString()}`
         );
     },
 };
+
+
+

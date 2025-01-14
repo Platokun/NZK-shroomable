@@ -103,22 +103,16 @@ function checkAndRunHolidays() {
         const guildData = data.guilds[guildId];
         const targetTime = guildData['target time'];
         const nextRunTimestamp = guildData['next run'];
+        const timezoneOffset = guildData['timezone'] || 0; // Default to 0 if not set
         const enabled = guildData.enabled;
 
         // Skip if not enabled or missing target time
         if (!enabled || !targetTime) continue;
 
-        // If `next run` is not set, initialize it to today at the target time
+        // If `next run` is not set, initialize it to today at the target time with offset
         if (!nextRunTimestamp) {
-            const initialNextRun = new Date(
-                now.getFullYear(),
-                now.getMonth(),
-                now.getDate(),
-                targetTime.hour,
-                targetTime.minutes,
-                0
-            ).getTime();
-            guildData['next run'] = initialNextRun;
+            const initialNextRun = calculateNextRun(now, targetTime, timezoneOffset);
+            guildData['next run'] = initialNextRun.getTime();
             saveAutoHolidayData(data);
             continue; // Skip this iteration, we'll pick it up next time
         }
@@ -128,23 +122,50 @@ function checkAndRunHolidays() {
             // Run the holiday function
             runHolidayForGuild(guildId, guildData.channel_id);
 
-            // Calculate the next run: tomorrow at the target time
-            const nextRunDate = new Date(nextRunTimestamp);
-            const nextRun = new Date(
-                nextRunDate.getFullYear(),
-                nextRunDate.getMonth(),
-                nextRunDate.getDate() + 1, // Move to the next day
-                targetTime.hour,
-                targetTime.minutes,
-                0
-            ).getTime();
+            // Calculate the next run: tomorrow at the target time with offset
+            const nextRunDate = calculateNextRun(new Date(nextRunTimestamp), targetTime, timezoneOffset, true);
 
             // Update `next run`
-            guildData['next run'] = nextRun;
+            guildData['next run'] = nextRunDate.getTime();
             saveAutoHolidayData(data);
         }
     }
 }
+
+/**
+ * Calculates the next run time based on target time, timezone offset, and rollover logic.
+ * @param {Date} baseDate - The base date to calculate from (current or last run).
+ * @param {Object} targetTime - The target time with `hour` and `minutes` fields.
+ * @param {number} timezoneOffset - The timezone offset (hours relative to UTC).
+ * @param {boolean} rollOver - Whether to move the calculation to the next day.
+ * @returns {Date} - The calculated next run time.
+ * Im eepy asf does anything ever make sense
+ * We hate life lmfao
+ */
+function calculateNextRun(baseDate, targetTime, timezoneOffset, rollOver = false) {
+    const adjustedDate = new Date(baseDate);
+    if (rollOver) {
+        // Move to the next day if rolling over
+        adjustedDate.setDate(adjustedDate.getDate() + 1);
+    }
+
+    // Adjust the target time with timezone offset
+    let adjustedHour = targetTime.hour - timezoneOffset;
+
+    // Handle day rollover due to timezone adjustment
+    if (adjustedHour < 0) {
+        adjustedHour += 24;
+        adjustedDate.setDate(adjustedDate.getDate() - 1);
+    } else if (adjustedHour >= 24) {
+        adjustedHour -= 24;
+        adjustedDate.setDate(adjustedDate.getDate() + 1);
+    }
+
+    // Set the adjusted time
+    adjustedDate.setHours(adjustedHour, targetTime.minutes, 0, 0);
+    return adjustedDate;
+}
+
 
 
 
