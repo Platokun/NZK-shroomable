@@ -102,74 +102,68 @@ function checkAndRunHolidays() {
     for (const guildId in data.guilds) {
         const guildData = data.guilds[guildId];
         const targetTime = guildData['target time'];
-        const nextRunTimestamp = guildData['next run'];
+        const lastRunTimestamp = guildData['last ran'];
         const timezoneOffset = guildData['timezone'] || 0; // Default to 0 if not set
         const enabled = guildData.enabled;
 
         // Skip if not enabled or missing target time
         if (!enabled || !targetTime) continue;
 
-        // If `next run` is not set, initialize it to today at the target time with offset
-        if (!nextRunTimestamp) {
-            const initialNextRun = calculateNextRun(now, targetTime, timezoneOffset);
-            guildData['next run'] = initialNextRun.getTime();
-            saveAutoHolidayData(data);
-            continue; // Skip this iteration, we'll pick it up next time
-        }
-
-        // Check if `now` is greater than `next run`
+        const nextRunTimestamp = guildData['next run'];
         if (now.getTime() > nextRunTimestamp) {
-            // Run the holiday function
+            console.log(`Running holiday function for guild ${guildId}`);
             runHolidayForGuild(guildId, guildData.channel_id);
-
-            // Calculate the next run: tomorrow at the target time with offset
-            const nextRunDate = calculateNextRun(new Date(nextRunTimestamp), targetTime, timezoneOffset, true);
-
-            // Update `next run`
+        
+            // Calculate the next run based on the current date
+            const nextRunDate = calculateNextRun(guildData['target time'], guildData['timezone']);
             guildData['next run'] = nextRunDate.getTime();
             saveAutoHolidayData(data);
+        
+            console.log(
+                `Next run for guild ${guildId} scheduled at ${nextRunDate.toISOString()} (UTC).`
+            );
+        }
+        
+         else {
+            // Log the time until the next run
+            const timeUntilNextRun = nextRunTimestamp - now.getTime();
+            const hours = Math.floor(timeUntilNextRun / 3600000);
+            const minutes = Math.floor((timeUntilNextRun % 3600000) / 60000);
+            const seconds = Math.floor((timeUntilNextRun % 60000) / 1000);
+            console.log(
+                `Next run for guild ${guildId} in ${hours} hours, ${minutes} minutes, ${seconds} seconds.`
+            );
         }
     }
-}
-
-/**
- * Calculates the next run time based on target time, timezone offset, and rollover logic.
- * @param {Date} baseDate - The base date to calculate from (current or last run).
+}/**
+ * Calculates the next run time based on the current date, target time, and timezone offset.
  * @param {Object} targetTime - The target time with `hour` and `minutes` fields.
  * @param {number} timezoneOffset - The timezone offset (hours relative to UTC).
- * @param {boolean} rollOver - Whether to move the calculation to the next day.
  * @returns {Date} - The calculated next run time.
- * Im eepy asf does anything ever make sense
- * We hate life lmfao
  */
-function calculateNextRun(baseDate, targetTime, timezoneOffset, rollOver = false) {
-    const adjustedDate = new Date(baseDate);
-    if (rollOver) {
-        // Move to the next day if rolling over
-        adjustedDate.setDate(adjustedDate.getDate() + 1);
+function calculateNextRun(targetTime, timezoneOffset) {
+    const now = new Date();
+
+    // Calculate midnight UTC for today's date
+    const midnightUTC = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+    ));
+
+    // Apply target time to midnight
+    midnightUTC.setUTCHours(targetTime.hour, targetTime.minutes, 0, 0);
+
+    // Adjust for timezone offset
+    const adjustedTime = new Date(midnightUTC.getTime() - timezoneOffset * 60 * 60 * 1000);
+
+    // If the adjusted time has already passed today, schedule for tomorrow
+    if (adjustedTime.getTime() <= now.getTime()) {
+        adjustedTime.setUTCDate(adjustedTime.getUTCDate() + 1);
     }
 
-    // Adjust the target time with timezone offset
-    let adjustedHour = targetTime.hour - timezoneOffset;
-
-    // Handle day rollover due to timezone adjustment
-    if (adjustedHour < 0) {
-        adjustedHour += 24;
-        adjustedDate.setDate(adjustedDate.getDate() - 1);
-    } else if (adjustedHour >= 24) {
-        adjustedHour -= 24;
-        adjustedDate.setDate(adjustedDate.getDate() + 1);
-    }
-
-    // Set the adjusted time
-    adjustedDate.setHours(adjustedHour, targetTime.minutes, 0, 0);
-    return adjustedDate;
+    return adjustedTime;
 }
-
-
-
-
-
 
 async function logLastBotMessage(guildId, channelId) {
     try {
@@ -270,7 +264,7 @@ client.on(Events.InteractionCreate, async interaction => {
 //setInterval(logLastMessagesFromConfig, 10000);
 // Run the function every unit of time (e.g., 10 seconds)
 // Run the function every unit of time (e.g., 1 minute)
-setInterval(checkAndRunHolidays, 6000);
+setInterval(checkAndRunHolidays, 3000);
 
 
 client.login(token);
